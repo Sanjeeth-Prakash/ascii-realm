@@ -45,7 +45,19 @@ start the game; the title screen shows **Install update**, which patches the
 game and restarts it. Dragging the zip onto the game window works too.
 (Making one: `node build/release.mjs update <installed version>`.)
 
-**Automatic updates over the internet (free, via GitHub Releases):** put
+**Publishing an update to every player (the normal way):** bump `version` in
+`package.json`, then
+
+```
+node build/release.mjs publish "what's new"
+```
+
+This writes `release.json` (version + a hash of every game file), commits,
+tags `v<version>` and pushes. Installed games read `release.json` from this
+repository (`update-feed.json` → `{ "repo": "owner/repo" }`), compare hashes
+and download only the changed files from the tag, then restart.
+
+**Alternative: GitHub Releases with zips:** put
 `update-feed.json` (`{ "github": "owner/repo" }`) next to the game files and
 publish each version as a GitHub release of that (public) repository:
 

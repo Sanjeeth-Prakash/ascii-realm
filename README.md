@@ -57,7 +57,9 @@ Every frame is a real 3D world, rendered one character at a time.</p>
 
 ## Download and play
 
-1. Go to **[Releases](https://github.com/Sanjeeth-Prakash/ascii-realm/releases/latest)** and download `ASCII-Realm-Installer.zip`
+**Windows**
+
+1. Download the game: either `ASCII-Realm-Installer.zip` from **[Releases](https://github.com/Sanjeeth-Prakash/ascii-realm/releases/latest)**, or this whole page with the green **Code → Download ZIP** button
 2. Unzip it and run **`Install ASCII Realm.bat`**
 3. The first install downloads the game runtime once (about 110 MB, from the official Electron releases, checksum-verified) and adds Desktop and Start Menu shortcuts
 
@@ -92,6 +94,8 @@ Developer notes (architecture, building, releasing): [`docs/DEVELOPING.md`](docs
 
 ## Roadmap
 
+Where it's heading: a shared open world where **action-RPG build depth** meets **MMO tactics**. A few powerful skills that your whole build is built around, a big passive tree, any item on any character, deep defensive layers (block, evasion, resistances), and a choice of control style: the current action combat or tab-target. Lore you find rather than read off a quest giver: in ruins, in books, and from the bosses themselves. A large world grown from a hand-drawn map with procedural rules, with key places built by hand.
+
 - [x] The world: glyph grass, weather, day and night, colour schemes
 - [x] Menus, options, saves, audio
 - [x] Souls-like combat: combos, charged heavies, rolls, lock-on, stamina
@@ -100,7 +104,10 @@ Developer notes (architecture, building, releasing): [`docs/DEVELOPING.md`](docs
 - [x] Self-updating desktop app
 - [ ] Motion-captured sword animations
 - [ ] Loot: rarity tiers, random stats, weapons with their own movesets, shields, parry
-- [ ] Classless skill trees (Berserker first)
+- [ ] A large passive skill tree and a handful of build-defining active skills (Berserker first)
+- [ ] Optional tab-target control mode
+- [ ] Lore through places, books and boss dialogue
+- [ ] A big world from a map sketch plus procedural rules, with handcrafted locations
 - [ ] Horse and mounted combat
 - [ ] Bosses, dungeons, crafting
 - [ ] Multiplayer: co-op, trading, PvP

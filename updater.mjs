@@ -195,3 +195,64 @@ export async function download(url, file, fetchFn, onProgress) {
   fs.writeFileSync(file, Buffer.concat(chunks));
   return file;
 }
+
+// ---------------------------------------------------------------- updates straight from the GitHub repo
+// The repository itself is the update server. `release.json` at the top of the
+// main branch lists the newest version and a hash of every game file; the
+// game downloads only the files whose hash differs from its own copy, from the
+// version's git tag (raw.githubusercontent.com, free and cached worldwide).
+
+import crypto from 'node:crypto';
+
+const RAW = (repo, ref, p, base = 'https://raw.githubusercontent.com') => `${base}/${repo}/${ref}/${p.split('/').map(encodeURIComponent).join('/')}`;
+
+function sha1(file) {
+  try { return crypto.createHash('sha1').update(fs.readFileSync(file)).digest('hex'); } catch { return null; }
+}
+
+export async function checkRepo(feed, appDir, current, fetchFn) {
+  const branch = feed.branch || 'main';
+  const res = await fetchFn(`${RAW(feed.repo, branch, 'release.json', feed.raw)}?t=${Date.now()}`, { headers: { 'Cache-Control': 'no-cache' } });
+  if (!res.ok) throw new Error(`update server said ${res.status}`);
+  const rel = await res.json();
+  if (!rel.version || !newer(rel.version, current)) return null;
+  const files = [];
+  for (const [p, hash] of Object.entries(rel.files || {})) {
+    if (sha1(path.join(appDir, p)) === hash) continue;
+    files.push({ path: p, url: RAW(feed.repo, rel.tag || `v${rel.version}`, p, feed.raw), size: rel.sizes?.[p] || 0, hash });
+  }
+  return { version: rel.version, notes: rel.notes || '', kind: 'repo', files, size: files.reduce((n, f) => n + f.size, 0), packageJson: rel.packageJson, remove: rel.remove || [] };
+}
+
+// download every changed file next to its target, check its hash, then swap them all in
+export async function installRepo(plan, appDir, fetchFn, onProgress) {
+  const root = path.resolve(appDir);
+  const safe = (rel) => {
+    const out = path.resolve(root, rel);
+    if (out !== root && !out.startsWith(root + path.sep)) throw new Error(`bad path in update: ${rel}`);
+    return out;
+  };
+  const staged = [];
+  let done = 0;
+  try {
+    for (const f of plan.files) {
+      const res = await fetchFn(f.url);
+      if (!res.ok) throw new Error(`could not download ${f.path} (${res.status})`);
+      const buf = Buffer.from(await res.arrayBuffer());
+      if (f.hash && crypto.createHash('sha1').update(buf).digest('hex') !== f.hash) throw new Error(`${f.path} was damaged in download`);
+      const dest = safe(f.path);
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest + '.updating', buf);
+      staged.push(dest);
+      done += f.size || buf.length;
+      onProgress?.(plan.size ? done / plan.size : staged.length / plan.files.length);
+    }
+  } catch (err) {
+    for (const d of staged) fs.rmSync(d + '.updating', { force: true });
+    throw err;
+  }
+  for (const d of staged) fs.renameSync(d + '.updating', d);
+  for (const rel of plan.remove || []) fs.rmSync(safe(rel), { force: true, recursive: true });
+  if (plan.packageJson) fs.writeFileSync(path.join(root, 'package.json'), plan.packageJson);
+  return plan.version;
+}

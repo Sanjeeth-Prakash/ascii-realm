@@ -4,7 +4,8 @@
 # Later runs: only replace the game files (fast update, no download).
 # Your saves and settings are in %APPDATA%\ASCII Realm and are never touched.
 
-param([switch]$Uninstall)
+param([switch]$Uninstall, [string]$Source)
+# -Source <folder>: install from a copy of the GitHub repository ("Code > Download ZIP")
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -68,9 +69,25 @@ if (-not (Test-Path $Marker)) {
 # ---- game files (every run) ----
 $app = Join-Path $Dest 'resources\app'
 if (Test-Path $app) { Remove-Item $app -Recurse -Force }
-Copy-Item (Join-Path $Here 'game') $app -Recurse
-Copy-Item (Join-Path $Here 'icon.ico') (Join-Path $Dest 'ASCII Realm.ico') -Force
-Copy-Item (Join-Path $Here 'uninstall.bat') (Join-Path $Dest 'Uninstall ASCII Realm.bat') -Force
+if ($Source) {
+  # straight from the repository: copy only what the game needs
+  $Source = (Resolve-Path $Source).Path
+  New-Item -ItemType Directory -Path $app | Out-Null
+  foreach ($item in @('index.html', 'desktop.mjs', 'desktop-preload.cjs', 'updater.mjs', 'server.js', 'CREDITS.md', 'update-feed.json', 'lib', 'src', 'assets')) {
+    $p = Join-Path $Source $item
+    if (Test-Path $p) { Copy-Item $p (Join-Path $app $item) -Recurse -Force }
+  }
+  New-Item -ItemType Directory -Path (Join-Path $app 'build') -Force | Out-Null
+  Copy-Item (Join-Path $Source 'build\icon.png') (Join-Path $app 'build\icon.png') -Force
+  $ver = (Get-Content (Join-Path $Source 'package.json') -Raw | ConvertFrom-Json).version
+  Set-Content -Path (Join-Path $app 'package.json') -Value ('{ "name": "ascii-realm", "productName": "ASCII Realm", "version": "' + $ver + '", "type": "module", "main": "desktop.mjs", "private": true }')
+  Copy-Item (Join-Path $Source 'build\icon.ico') (Join-Path $Dest 'ASCII Realm.ico') -Force
+  Copy-Item (Join-Path $Here 'uninstall.bat') (Join-Path $Dest 'Uninstall ASCII Realm.bat') -Force
+} else {
+  Copy-Item (Join-Path $Here 'game') $app -Recurse
+  Copy-Item (Join-Path $Here 'icon.ico') (Join-Path $Dest 'ASCII Realm.ico') -Force
+  Copy-Item (Join-Path $Here 'uninstall.bat') (Join-Path $Dest 'Uninstall ASCII Realm.bat') -Force
+}
 Copy-Item (Join-Path $Here 'install.ps1') (Join-Path $Dest 'install.ps1') -Force
 
 # ---- shortcuts ----

@@ -2,9 +2,9 @@
  "version": "0.8.1",
  "files": {
   "index.html": "d9f8025a8c79a4bebd1652bdd613161e0baf56a8",
-  "desktop.mjs": "266de4d619d00c04b3fe516c05cc03e8cf028b04",
+  "desktop.mjs": "927b39a4d6c64ae83be3dc4a522054a790152034",
   "desktop-preload.cjs": "000c1d82100ce85a4bf12718c269e974b8da6253",
-  "updater.mjs": "c1b9526d0d90febd1ceb76e10b633b8f74c03a8b",
+  "updater.mjs": "62808bd9954b4cb5e2f8bc233fc0fddc96394293",
   "server.js": "605a1209812609639dfc62b7e84d56af311176eb",
   "CREDITS.md": "d7e41ba7fb3b980d439d085c89392c6435305a11",
   "lib/THREE_LICENSE.txt": "e64e644435ab71c7a646b90d47843001ed4eecc3",
@@ -37,7 +37,7 @@
   "src/ui/hud.js": "45ee5d28133c6a790f54b9f58e1f646a00232c8c",
   "src/ui/inventory.js": "748d4a9363d9256f5b35f709a949f77a29ebaeda",
   "src/ui/menu.css": "7140540bdf79a50d3ef67bcd641ce2a964b5957f",
-  "src/ui/menu.js": "d9474baa12ad8178cacc43768b4555a38159f333",
+  "src/ui/menu.js": "8319454033d7c3800a8af67fbd1c1d66ef1d8d53",
   "src/ui/portrait.js": "efe9ef2a884bf4832e67092e2f51f7c51214384b",
   "src/ui/shrine.js": "d5a877a8d56d9596cffd90fd1b603e410caa534c",
   "src/world/cobwebs.js": "5a0fe20c7d7391cfcd30f2749524f3a488a9b2aa",
@@ -194,6 +194,6 @@
   "assets/models/hero.glb": "3b2df6d248975f411897fc2b024d1e7e74b53825",
   "assets/models/stork.glb": "2550675f03ecf80a83fc3bf4b810ae4faec94942",
   "build/icon.png": "fcc0513d64ace8d065ff3f62e4a05010db9dc51b",
-  "update-feed.json": "2fb4b3ee7612d8174d0802963033c841414ae21d"
+  "update-feed.json": "9fb65bf9acb606c3118e323b1ee2af5b306ddec7"
  }
 }

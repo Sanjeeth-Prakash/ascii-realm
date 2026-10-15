@@ -18,6 +18,7 @@ const h = (tag, attrs = {}, ...kids) => {
   return el;
 };
 
+const fmtSize = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
 const newerVer = (a, b) => {
   const x = a.split('.').map(Number), y = b.split('.').map(Number);
   for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
@@ -123,9 +124,9 @@ export class Menu {
   }
 
   async installOnline(plan) {
-    const mb = (plan.size / 1048576).toFixed(1);
+    const mb = fmtSize(plan.size);
     const notes = plan.notes ? `\n\n${plan.notes.slice(0, 400)}` : '';
-    if (!(await this.confirm(`Update to v${plan.version}? It downloads ${mb} MB, saves your progress and restarts the game.${notes}`, 'Update now'))) return;
+    if (!(await this.confirm(`Update to v${plan.version}? It downloads ${mb}, saves your progress and restarts the game.${notes}`, 'Update now'))) return;
     this.cb.onExit?.();
     const bar = h('i', { class: 'upd-fill' });
     const label = h('p', {}, `Downloading v${plan.version}…`);
@@ -169,7 +170,7 @@ export class Menu {
     let first = save ? 0 : 1;
     if (this.online && (!this.update || newerVer(this.online.version, this.update.version))) {
       const o = this.online;
-      items.unshift({ label: `Update to v${o.version}  (${(o.size / 1048576).toFixed(1)} MB)`, act: () => this.installOnline(o) });
+      items.unshift({ label: `Update to v${o.version}  (${fmtSize(o.size)})`, act: () => this.installOnline(o) });
       first = 0;
     } else if (this.update) {
       const u = this.update;

@@ -7,7 +7,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { startServer } from './server.js';
-import { findUpdate, applyUpdate, peekUpdate, checkOnline, download } from './updater.mjs';
+import { findUpdate, applyUpdate, peekUpdate, checkOnline, download, checkRepo, installRepo } from './updater.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 app.setName('ASCII Realm');
@@ -82,16 +82,24 @@ app.whenReady().then(async () => {
   });
   // online: where releases are published (update-feed.json next to the game files)
   const feed = () => {
-    if (process.env.ASCII_REALM_FEED) return { url: process.env.ASCII_REALM_FEED };
-    try { const f = JSON.parse(fs.readFileSync(path.join(HERE, 'update-feed.json'), 'utf8')); return f.github || f.url ? f : null; } catch { return null; }
+    if (process.env.ASCII_REALM_FEED) return JSON.parse(process.env.ASCII_REALM_FEED);   // testing
+    try { const f = JSON.parse(fs.readFileSync(path.join(HERE, 'update-feed.json'), 'utf8')); return f.repo || f.github || f.url ? f : null; } catch { return null; }
   };
   ipcMain.handle('update-online-check', async () => {
     const f = feed();
     if (!f) return { configured: false };
-    try { return { configured: true, update: await checkOnline(f, version(), net.fetch) }; } catch (err) { return { configured: true, error: String(err.message || err) }; }
+    try {
+      const update = f.repo ? await checkRepo(f, HERE, version(), net.fetch) : await checkOnline(f, version(), net.fetch);
+      return { configured: true, update };
+    } catch (err) { return { configured: true, error: String(err.message || err) }; }
   });
   ipcMain.handle('update-online-install', async (e, plan) => {
     try {
+      if (plan.kind === 'repo') {
+        const v = await installRepo(plan, HERE, net.fetch, (f) => e.sender.send('update-progress', f));
+        setTimeout(() => { app.relaunch(); app.exit(0); }, 600);
+        return { ok: true, version: v };
+      }
       const tmp = path.join(app.getPath('temp'), 'ascii-realm-update');
       fs.rmSync(tmp, { recursive: true, force: true });
       const total = plan.size || 1;
