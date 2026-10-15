@@ -76,14 +76,19 @@ if (cmd === 'publish') {
   const sizes = Object.fromEntries(Object.keys(cur.files).map((f) => [f, fs.statSync(path.join(ROOT, f)).size]));
   const prev = (() => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'release.json'), 'utf8')); } catch { return null; } })();
   const remove = prev ? Object.keys(prev.files).filter((f) => !(f in cur.files)) : [];
-  const rel = { version: VERSION, tag: `v${VERSION}`, date: new Date().toISOString().slice(0, 10), notes, files: cur.files, sizes, remove, packageJson: gamePackageJson() };
-  fs.writeFileSync(path.join(ROOT, 'release.json'), JSON.stringify(rel, null, 1) + '\n');
   const git = (...a) => execFileSync('git', a, { cwd: ROOT, stdio: 'inherit' });
+  const out = (...a) => execFileSync('git', a, { cwd: ROOT }).toString().trim();
+  const sign = '\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>';
+  // 1) commit the game files; players download them from this exact commit
   git('add', '-A');
-  git('commit', '-q', '-m', `Release v${VERSION}${notes ? `\n\n${notes}` : ''}\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`);
-  git('tag', '-f', `v${VERSION}`);
+  if (out('status', '--porcelain')) git('commit', '-q', '-m', `v${VERSION} game files${notes ? `\n\n${notes}` : ''}${sign}`);
+  const sha = out('rev-parse', 'HEAD');
+  // 2) point release.json at that commit and push both
+  const rel = { version: VERSION, tag: sha, date: new Date().toISOString().slice(0, 10), notes, files: cur.files, sizes, remove, packageJson: gamePackageJson() };
+  fs.writeFileSync(path.join(ROOT, 'release.json'), JSON.stringify(rel, null, 1) + '\n');
+  git('add', 'release.json');
+  git('commit', '-q', '-m', `Release v${VERSION}${sign}`);
   git('push', 'origin', 'HEAD:main');
-  git('push', '-f', 'origin', `v${VERSION}`);
   console.log(`published v${VERSION}: ${Object.keys(cur.files).length} files`);
 } else if (cmd === 'release') {
   // online release: small update from <from> + full game zip, ready for GitHub
