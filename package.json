@@ -1,0 +1,16 @@
+{
+  "name": "ascii-realm",
+  "version": "0.8.1",
+  "private": true,
+  "type": "module",
+  "description": "An ASCII-rendered 3D souls-like action RPG.",
+  "main": "desktop.mjs",
+  "scripts": {
+    "start": "node server.js",
+    "desktop": "electron .",
+    "desktop:uncapped": "electron . --uncapped"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0"
+  }
+}

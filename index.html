@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ASCII Realm</title>
+  <style>
+    :root {
+      --ink: #d9e2d0;
+      --dim: #7d8a78;
+      --ember: #ffb35c;
+      --panel: rgba(6, 9, 8, 0.72);
+      --mono: "JetBrains Mono", "DejaVu Sans Mono", Consolas, "Courier New", monospace;
+    }
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--ink); font-family: var(--mono); }
+    canvas { display: block; width: 100%; height: 100%; }
+    .nameplate {
+      position: fixed; left: 0; top: 0; transform: translate(-50%, -100%);
+      font-size: 12px; letter-spacing: 0.04em; color: #fff; pointer-events: none;
+      text-shadow: 0 0 4px #000, 0 0 2px #000; white-space: nowrap;
+    }
+    #hud { position: fixed; inset: 0; pointer-events: none; font-size: 12px; font-variant-numeric: tabular-nums; }
+    #hud kbd { font-family: var(--mono); font-size: 10px; color: var(--dim); }
+    /* bars */
+    /* top-left, Elden Ring style: a round emblem with the bars beside it */
+    .hud-status { position: absolute; left: 18px; top: 16px; display: flex; gap: 8px; align-items: flex-start; }
+    .emblem { width: 44px; height: 44px; border-radius: 50%; display: grid; place-content: center; justify-items: center; flex: none;
+      background: radial-gradient(circle at 50% 40%, rgba(40,36,30,.92), rgba(6,6,5,.92)); border: 1px solid rgba(217, 206, 170, .45);
+      box-shadow: 0 0 0 2px rgba(0,0,0,.6), inset 0 0 8px rgba(0,0,0,.8); line-height: 1; }
+    .emblem .lv { font-size: 8px; letter-spacing: .12em; color: var(--dim); }
+    .emblem b { font-size: 15px; color: var(--hi, #fff); font-weight: 700; margin-top: 2px; }
+    .hud-bars { display: grid; gap: 4px; justify-items: start; padding-top: 3px; }
+    .hud-bars .name { display: none; }
+    .hb { position: relative; height: 6px; background: rgba(0, 0, 0, .62); border: 1px solid rgba(217, 206, 170, .35); box-shadow: 0 0 0 1px rgba(0,0,0,.6); transition: width .4s; }
+    .hb.hp { height: 8px; }
+    /* bottom-centre: big bar for a strong foe you're fighting */
+    #boss { position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); width: min(56vw, 760px); display: none; }
+    #boss.on { display: block; }
+    #boss .bn { font-size: 13px; letter-spacing: .06em; color: var(--ink); text-shadow: 0 0 4px #000; margin: 0 0 4px 2px; display: flex; justify-content: space-between; }
+    #boss .bn i { font-style: normal; color: #fff; }
+    #boss .bb { position: relative; height: 7px; background: rgba(0,0,0,.65); border: 1px solid rgba(217, 206, 170, .35); }
+    #boss .bb i { position: absolute; left: 0; top: 0; bottom: 0; display: block; }
+    #boss .bb .t { background: rgba(255, 230, 170, .55); }
+    #boss .bb .f { background: linear-gradient(to bottom, #a8231c, #5c100c); }
+    .hb i { position: absolute; left: 0; top: 0; bottom: 0; display: block; }
+    .hb .trail { background: rgba(255, 230, 170, .55); }
+    .hb.hp .fill { background: linear-gradient(to bottom, var(--hp, #c8433a), color-mix(in srgb, var(--hp, #c8433a) 60%, #000)); }
+    .hb.fp .fill { background: linear-gradient(to bottom, var(--fp, #4f7fd8), color-mix(in srgb, var(--fp, #4f7fd8) 60%, #000)); }
+    .hb.st .fill { background: linear-gradient(to bottom, var(--st, #6fb04a), color-mix(in srgb, var(--st, #6fb04a) 60%, #000)); }
+    /* equipment cross */
+    .hud-equip { position: absolute; left: 22px; bottom: 22px; display: grid; gap: 4px;
+      grid-template-columns: 56px 56px 56px; grid-template-rows: 56px 56px 56px;
+      grid-template-areas: ". top ." "left . right" ". bottom ."; }
+    .eqs { position: relative; display: grid; place-items: center; background: rgba(4, 6, 6, .72);
+      border: 1px solid rgba(217, 226, 208, .26); box-shadow: inset 0 0 0 1px rgba(0,0,0,.5); }
+    .eqs::after { content: ''; position: absolute; inset: 3px; border: 1px solid color-mix(in srgb, var(--rc) 45%, transparent); pointer-events: none; }
+    .eqs .g { font-size: 28px; line-height: 1; color: var(--rc); text-shadow: 0 0 6px color-mix(in srgb, var(--rc) 50%, transparent); }
+    .eqs .c { position: absolute; right: 5px; bottom: 3px; font-size: 11px; color: var(--hi, #fff); }
+    .eqs .k { position: absolute; left: 4px; top: 2px; font-size: 9px; }
+    .eqs .n { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); white-space: nowrap; font-size: 10px; color: var(--dim); display: none; }
+    .eqs[data-slot="item"] .n { display: block; margin-top: 3px; }
+    .eqs.empty .g::before { content: '·'; color: rgba(217,226,208,.25); }
+    .eqs.lit { box-shadow: inset 0 0 14px rgba(255, 150, 60, .35), 0 0 10px rgba(255, 140, 50, .25); }
+    /* runes + menu bar */
+    .hud-right { position: absolute; right: 22px; bottom: 22px; display: grid; gap: 10px; justify-items: end; pointer-events: auto; }
+    .runes { display: flex; gap: 8px; align-items: center; padding: 4px 12px; background: rgba(4, 6, 6, .6); border: 1px solid rgba(217, 226, 208, .2); font-size: 14px; color: var(--hi, #fff); }
+    .runes .rg { color: var(--ember); }
+    .mmo { display: flex; gap: 4px; }
+    .mmo button { all: unset; cursor: pointer; display: grid; justify-items: center; gap: 2px; min-width: 52px; padding: 6px 6px 4px;
+      background: rgba(4, 6, 6, .72); border: 1px solid rgba(217, 226, 208, .24); font-size: 11px; color: var(--ink); letter-spacing: .04em; }
+    .mmo button:hover:not(:disabled) { border-color: var(--ember); color: var(--hi, #fff); }
+    .mmo button:disabled { opacity: .38; cursor: default; }
+    .mmo button:focus-visible { outline: 1px dashed var(--ember); outline-offset: 2px; }
+    /* corner */
+    .hud-corner { position: absolute; right: 14px; top: 10px; display: flex; gap: 12px; font-size: 11px; color: var(--dim); }
+    #perf { color: var(--st, #9fd46a); }
+    body.cursor-locked .mmo { pointer-events: none; }
+    #gpu { position: fixed; right: 14px; top: 26px; font-size: 10px; color: rgba(217,226,208,.35); pointer-events: none; }
+    #loading {
+      position: fixed; inset: 0; background: #000; display: grid; place-content: center; justify-items: center;
+      gap: 14px; z-index: 20; transition: opacity .6s; font-size: 12px; color: var(--dim);
+    }
+    #loading .t { color: var(--ember); letter-spacing: 0.4em; font-weight: 700; font-size: 16px; }
+    #loading .bar { width: 220px; height: 2px; background: #1a1d1b; }
+    #loading .bar i { display: block; height: 100%; width: 0; background: var(--ember); transition: width .3s; }
+    #toast {
+      position: fixed; left: 50%; top: 14%; transform: translateX(-50%); font-size: 14px;
+      letter-spacing: 0.2em; color: #fff; text-shadow: 0 0 6px #000; opacity: 0; transition: opacity .4s;
+      pointer-events: none; text-transform: uppercase;
+    }
+    /* enemies: health bars, stacked damage, lock-on reticle */
+    #foes { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+    .foe { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+    .foe-bar { position: absolute; left: -38px; top: -4px; width: 76px; height: 4px; background: rgba(0,0,0,.65); outline: 1px solid rgba(255,255,255,.18); }
+    .foe-bar i { position: absolute; left: 0; top: 0; bottom: 0; }
+    .foe-bar .t { background: #e8c48a; opacity: .55; }
+    .foe-bar .f { background: #b8322a; }
+    .foe-name { position: absolute; left: 0; top: -20px; transform: translateX(-50%); font-size: 11px; letter-spacing: .08em; color: var(--ink); text-shadow: 0 0 3px #000; white-space: nowrap; }
+    .foe-dmg { position: absolute; left: 44px; top: -9px; font-size: 12px; color: #fff; text-shadow: 0 0 3px #000; font-variant-numeric: tabular-nums; }
+    .reticle { position: absolute; left: 0; top: 0; margin: -9px 0 0 -6px; font-size: 16px; line-height: 18px; color: #fff; text-shadow: 0 0 6px var(--ember), 0 0 2px #000; display: none; }
+    #prompt { position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%); padding: 6px 16px; font-size: 13px; letter-spacing: .12em;
+      color: var(--ink); background: rgba(6,8,7,.72); border: 1px solid rgba(255,255,255,.14); pointer-events: none; opacity: 0; transition: opacity .25s; white-space: nowrap; }
+    #prompt.on { opacity: 1; }
+    #prompt kbd { color: var(--ember); font-family: inherit; margin-right: 10px; }
+    #died { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; opacity: 0; transition: opacity 1.4s; z-index: 3;
+      background: linear-gradient(transparent 38%, rgba(0,0,0,.78) 44%, rgba(0,0,0,.78) 56%, transparent 62%); }
+    #died .w { font-family: "Times New Roman", Georgia, serif; font-size: clamp(30px, 5.4vw, 72px); white-space: nowrap; letter-spacing: .14em; color: #a31d17; text-shadow: 0 0 18px rgba(160,20,10,.6); transform: scale(.94); transition: transform 5s ease-out; }
+    #died.on { opacity: 1; }
+    #died.on .w { transform: scale(1.04); }
+    #died.rest .w { color: #e9c27a; text-shadow: 0 0 18px rgba(255,180,90,.5); font-size: clamp(22px, 3.4vw, 46px); }
+    #hud, #gpu, .nameplate, #foes { transition: opacity .5s; }
+    body.menu-mode #hud, body.menu-mode #gpu, body.menu-mode .nameplate, body.menu-mode #foes, body.menu-mode #prompt { opacity: 0; }
+    body.hide-fps #perf, body.hide-fps #gpu { visibility: hidden; }
+    body.inv-open .hud-status, body.inv-open .hud-equip { opacity: .25; }
+  </style>
+  <link rel="stylesheet" href="./src/ui/menu.css">
+</head>
+<body class="menu-mode">
+  <div id="hud">
+    <!-- bottom-left: equipment cross -->
+    <div class="hud-equip" aria-label="Equipment">
+      <div class="eqs" data-slot="spell" data-key="spell" style="grid-area: top"><span class="g"></span><span class="c"></span><kbd class="k"></kbd><span class="n"></span></div>
+      <div class="eqs" data-slot="left" data-key="torch" style="grid-area: left"><span class="g"></span><span class="c"></span><kbd class="k"></kbd><span class="n"></span></div>
+      <div class="eqs" data-slot="right" data-key="light" style="grid-area: right"><span class="g"></span><span class="c"></span><kbd class="k"></kbd><span class="n"></span></div>
+      <div class="eqs" data-slot="item" data-key="flask" style="grid-area: bottom"><span class="g"></span><span class="c"></span><kbd class="k"></kbd><span class="n"></span></div>
+    </div>
+    <!-- top-left: level emblem + HP / FP / stamina -->
+    <div class="hud-status">
+      <div class="emblem" title="Level"><span class="lv">LV</span><b id="level">1</b></div>
+      <div class="hud-bars">
+        <span class="name" id="pname">Wanderer</span>
+        <div class="hb hp" id="hpbar"><i class="trail" id="hptrail"></i><i class="fill" id="hpfill"></i></div>
+        <div class="hb fp" id="fpbar"><i class="trail" id="fptrail"></i><i class="fill" id="fpfill"></i></div>
+        <div class="hb st" id="stbar"><i class="trail" id="sttrail"></i><i class="fill" id="stfill"></i></div>
+      </div>
+    </div>
+    <!-- bottom-centre: strong foe -->
+    <div id="boss"><div class="bn"><span id="bossname"></span><i id="bossdmg"></i></div><div class="bb"><i class="t" id="bosstrail"></i><i class="f" id="bossfill"></i></div></div>
+    <!-- bottom-right: runes + menu bar -->
+    <div class="hud-right">
+      <div class="runes"><span class="rg">&#9672;</span><span id="runes">0</span></div>
+      <nav class="mmo" aria-label="Menus">
+        <button data-action="inventory"><span>Bag</span><kbd></kbd></button>
+        <button data-action="skills" disabled title="Coming with the skill trees"><span>Skills</span><kbd></kbd></button>
+        <button data-action="map" disabled title="Coming in a later update"><span>Map</span><kbd></kbd></button>
+        <button data-action="quests" disabled title="Coming in a later update"><span>Quests</span><kbd></kbd></button>
+        <button data-action="menu"><span>Menu</span><kbd></kbd></button>
+      </nav>
+    </div>
+    <div class="hud-corner"><span id="perf">-- fps</span><span id="world">night</span></div>
+  </div>
+  <div id="gpu"></div>
+  <div id="foes"></div>
+  <div id="prompt"></div>
+  <div id="died"><div class="w">YOU DIED</div></div>
+  <div id="toast"></div>
+  <div id="fade"></div>
+  <div id="ui"></div>
+  <div id="loading"><div class="t">ASCII REALM</div><div class="bar"><i id="loadbar"></i></div><div id="loadtxt">Loading</div></div>
+
+  <script type="importmap">
+    { "imports": { "three": "./lib/three.module.min.js", "three/addons/": "./lib/addons/" } }
+  </script>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
